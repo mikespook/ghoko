@@ -6,20 +6,20 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/mikespook/golib/iptpool"
 	"github.com/mikespook/golib/log"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
-	"io/ioutil"
-		"encoding/json"
 )
 
 var (
 	ErrAccessDeny = errors.New("Access Deny")
-	ErrPostOnly = errors.New("POST method only")
+	ErrPostOnly   = errors.New("POST method only")
 )
 
 type httpServer struct {
@@ -98,14 +98,14 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		ipt := s.iptPool.Get()
 		defer s.iptPool.Put(ipt)
-		var postReq PostRequest
-		err := json.Unmarshal(body, &postReq)
+		var req Request
+		err := json.Unmarshal(body, &req)
 		if err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, err.Error())
 			return
 		}
-		ipt.Bind("Request", &postReq)
+		ipt.Bind("Request", &req)
 		if err := ipt.Exec(p.Path, nil); err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, err.Error())

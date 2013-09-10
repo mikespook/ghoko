@@ -9,10 +9,10 @@ import (
 	"flag"
 	"github.com/mikespook/golib/log"
 	"github.com/mikespook/golib/signal"
-	"os"
-	"time"
-	"syscall"
 	"net"
+	"os"
+	"syscall"
+	"time"
 )
 
 var (
