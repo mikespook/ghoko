@@ -1,3 +1,3 @@
-for x in ipairs(gitlab.Request.Commits) do
-	gitlab.Debugf("%s", gitlab.Request.Commits[x].Timestamp)
+for x in ipairs(ghoko.Request.Commits) do
+	gitlab.Debugf("[%s] %s", ghoko.Hosting, ghoko.Request.Commits[x].Timestamp)
 end

@@ -15,10 +15,16 @@ import (
 	"time"
 )
 
+const (
+	GITLAB = "gitlab"
+	GITHUB = "github"
+)
+
 var (
-	addr       = flag.String("addr", ":8080", "address of http service")
-	scriptPath = flag.String("script", "./", "script path")
-	secret     = flag.String("secret", "", "secret token")
+	addr       = flag.String("addr", ":8080", "Address of http service")
+	scriptPath = flag.String("script", "./", "Path of lua files")
+	secret     = flag.String("secret", "", "Secret token")
+	mainHosting = flag.String("main", "gitlab", "Main hosted repository")
 )
 
 func init() {
@@ -26,6 +32,9 @@ func init() {
 		flag.Parse()
 	}
 	log.Flag()
+	if *mainHosting != GITHUB {
+		*mainHosting = GITLAB
+	}
 }
 
 func main() {
@@ -39,7 +48,7 @@ func main() {
 	if p[len(p)-1] == 47 {
 		p = p[:len(p)-1]
 	}
-	hook := NewHook(*addr, p, *secret)
+	hook := NewHook(*addr, p, *secret, *mainHosting)
 	go func() {
 		if e := hook.Serve(); e != nil {
 			if _, ok := e.(*net.OpError); !ok {

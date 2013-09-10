@@ -14,7 +14,7 @@ import (
 	"path"
 )
 
-const module = "gitlab"
+const module = "ghoko"
 
 type LuaIpt struct {
 	state *lua.State
@@ -26,7 +26,7 @@ func NewLuaIpt() iptpool.ScriptIpt {
 }
 
 func (luaipt *LuaIpt) Exec(name string, params interface{}) error {
-	f := luaipt.path + "/" + path.Base(name) + ".lua"
+	f := path.Join(luaipt.path , name + ".lua")
 	luaP := luar.Map{}
 	if p, ok := params.(url.Values); ok {
 		for k, v := range p {

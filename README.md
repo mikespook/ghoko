@@ -1,14 +1,27 @@
 GHoKo
 =====
 
-Every [GitLab][1] project can trigger a web server whenever the repo is pushed to. 
-Web Hooks can be used to update an external issue tracker, trigger [CI][2] builds,
-update a backup mirror, or even deploy to your production server.
+GHoKo is a web application that listens to post-hooks from [GitLab][gitlab]
+and [GitHub][github], scripted by Lua and written in [Golang][golang].
+
+For GitLab
+----------
+Every [GitLab][gitlab] project can trigger a web server whenever the repo is
+pushed to. Web Hooks can be used to update an external issue tracker, 
+trigger [CI][ci] builds, update a backup mirror, or even deploy to your 
+production server.
 
 GitLab will send POST request with commits information on every push.
 
-GHoKo is a web application that listens to post-hooks from GitLab, scripted
-by Lua and written in [Golang][3].
+For GitHub
+----------
+Every [GitHub][github] repository has the option to communicate with a web
+server whenever the repository is pushed to. These "WebHooks" can be used to 
+update an external issue tracker, trigger [CI][ci] builds, update a backup
+mirror, or even deploy to your production server.
+
+When a push is made to your repository, we'll POST to your URL with a payload
+of JSON-encoded data about the push and the commits it contained. 
 
 Dependency
 ==========
@@ -35,46 +48,22 @@ Executing:
 For help information:
 
 	Usage of ./ghoko:
-		-addr=":8080": address of http service
+		-addr=":8080": Address of http service
 		-log="": log to write (empty for STDOUT)
-		-log-level="all": log level ('error', 'warning', 'message', 'debug', 'all' and 'none' are combined with '|')
-		-script="./": script path
-		-secret="": secret token
+		-log-level="all": log level ('error', 'warning', 'message', 'debug',
+		'all' and 'none' are combined with '|')
+		-main="gitlab": Main hosted repository
+		-script="./": Path of lua files
+		-secret="": Secret token
 
 Scripting
 ---------
 
-GHoKo use Lua as the scripting language. GHoKo will pass the gitlab's [Request][7] into Lua script as a user data.
-The Request's struct (fake) is here:
+GHoKo use Lua as the scripting language. GHoKo will pass the Request into
+Lua script as a user data. The structure of Request is [here][gitlab-req]
+for gitlab (sign in needed) and [here][github-req] for github.
 
-	Request: {
-		Before:		string,
-  		After:		string,
-  		Ref:		string,
-  		UserId:		int,
-		UserName:	string,
-  		Repository {
-			Name: 		string,
-			Url:		string,
-			Description:	string,
-			Homepage:	string,
-  		},
-		Commits: [
-    		Commit {
-				Id:			string,
-				Message:	string,
-				Timestamp:	time.Time,
-				Url:		string,
-				Author: {
-					Name:	string,
-					Email:	string,
-				},
-    		},
-  		],
-		TotalCommitsCount: int,
-	}
-
-You can use this user data in the [Lua script][8].
+You can use this user data in the [Lua script][demo].
 
 Authors
 =======
@@ -86,13 +75,15 @@ Open Source
 
 See LICENSE for more information.
 
-[1]: http://www.gitlab.com
-[2]: http://en.wikipedia.org/wiki/Continuous_integration
-[3]: http://golang.org
+[gitlab]: http://www.gitlab.com
+[github]: http://www.github.com
+[ci]: http://en.wikipedia.org/wiki/Continuous_integration
+[golang]: http://golang.org
 [4]: https://github.com/mikespook/golib
 [5]: https://github.com/aarzilli/golua
 [6]: https://github.com/stevedonovan/luar
-[7]: https://github.com/mikespook/ghoko/blob/master/types.go
-[8]: https://github.com/mikespook/ghoko/blob/master/foobar.lua
+[demo]: https://github.com/mikespook/ghoko/blob/master/foobar.lua
 [blog]: http://mikespook.com
 [twitter]: http://twitter.com/mikespook
+[github-req]: https://help.github.com/articles/post-receive-hooks
+[gitlab-req]: http://demo.gitlab.com/help/web_hooks

@@ -15,6 +15,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
+	"path"
 )
 
 var (
@@ -28,14 +30,16 @@ type httpServer struct {
 	iptPool    *iptpool.IptPool
 	secret     string
 	scriptPath string
+	hosting string
 }
 
-func NewHook(addr, scriptPath, secret string) (srv *httpServer) {
+func NewHook(addr, scriptPath, secret, hosting string) (srv *httpServer) {
 	srv = &httpServer{
 		srv:        &http.Server{Addr: addr},
 		iptPool:    iptpool.NewIptPool(NewLuaIpt),
 		scriptPath: scriptPath,
 		secret:     secret,
+		hosting: hosting,
 	}
 	return
 }
@@ -68,23 +72,42 @@ func (s *httpServer) Close() error {
 	return nil
 }
 
-func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
+func (s *httpServer) precheck(w http.ResponseWriter, r *http.Request) (p string, params []interface{}, ok bool) {
 	if r.Method != "POST" { // only post method permited
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI,
 			ErrPostOnly)
 		http.Error(w, ErrPostOnly.Error(), 500)
-	}
-
-	p, err := url.Parse(r.RequestURI)
-	if err != nil {
-		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
-		http.Error(w, err.Error(), 500)
+		ok = false
 		return
 	}
 
-	if s.secret != p.Query().Get("secret") { // verify secret token
+	u, err := url.Parse(r.RequestURI)
+	if err != nil {
+		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
+		http.Error(w, err.Error(), 500)
+		ok = false
+		return
+	}
+	vs := u.Query()
+	if s.secret != vs.Get("secret") { // verify secret token
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrAccessDeny)
 		http.Error(w, ErrAccessDeny.Error(), 403)
+		ok = false
+		return
+	}
+	p = u.Path
+	params = make([]interface{}, len(vs))
+	i := 0
+	for v := range vs {
+		params[i] = v
+		i ++
+	}
+	return
+}
+
+func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
+	p, params, ok := s.precheck(w, r)
+	if !ok {
 		return
 	}
 	body, err := ioutil.ReadAll(r.Body)
@@ -98,15 +121,29 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		ipt := s.iptPool.Get()
 		defer s.iptPool.Put(ipt)
-		var req Request
-		err := json.Unmarshal(body, &req)
-		if err != nil {
-			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
-				r.RequestURI, err.Error())
-			return
+		repo, name := s.split(p)
+		if repo == GITLAB {
+			var req GitLabRequest
+			err := json.Unmarshal(body, &req)
+			if err != nil {
+				log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
+					r.RequestURI, err.Error())
+				return
+			}
+			ipt.Bind("Request", &req)
+		} else {
+			var req GitHubRequest
+			err := json.Unmarshal(body, &req)
+			if err != nil {
+				log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
+					r.RequestURI, err.Error())
+				return
+			}
+			ipt.Bind("Request", &req)
+			
 		}
-		ipt.Bind("Request", &req)
-		if err := ipt.Exec(p.Path, nil); err != nil {
+		ipt.Bind("Hosting", repo)
+		if err := ipt.Exec(name, params); err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, err.Error())
 			return
@@ -115,4 +152,20 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 			r.RequestURI)
 	}()
 	w.WriteHeader(200)
+}
+
+func (s *httpServer) split(p string) (repo string, name string) {
+	name = path.Base(p)
+	repo = "gitlab"
+	sp := strings.SplitN(p, "/", 3)
+	if len(sp) < 3 {
+		repo = s.hosting
+		return
+	} else {
+		repo = sp[1]
+	}
+	if repo != GITHUB {
+		repo = GITLAB	
+	}
+	return
 }
