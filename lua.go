@@ -1,0 +1,68 @@
+// Copyright 2013 Xing Xing <mikespook@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by a commercial
+// license that can be found in the LICENSE file.
+
+package main
+
+import (
+	"github.com/aarzilli/golua/lua"
+	"github.com/mikespook/golib/iptpool"
+	"github.com/mikespook/golib/log"
+	"github.com/stevedonovan/luar"
+	"net/url"
+	"path"
+)
+
+const module = "gitlab"
+
+type LuaIpt struct {
+	state *lua.State
+	path  string
+}
+
+func NewLuaIpt() iptpool.ScriptIpt {
+	return &LuaIpt{}
+}
+
+func (luaipt *LuaIpt) Exec(name string, params interface{}) error {
+	f := luaipt.path + "/" + path.Base(name) + ".lua"
+	luaP := luar.Map{}
+	if p, ok := params.(url.Values); ok {
+		for k, v := range p {
+			if len(v) > 1 {
+				luaP[k] = v
+			} else {
+				luaP[k] = v[0]
+			}
+		}
+	}
+	luaipt.Bind("Params", luaP)
+	return luaipt.state.DoFile(f)
+}
+
+func (luaipt *LuaIpt) Init(path string) error {
+	luaipt.state = luar.Init()
+	luaipt.Bind("Debugf", log.Debugf)
+	luaipt.Bind("Debug", log.Debug)
+	luaipt.Bind("Messagef", log.Messagef)
+	luaipt.Bind("Message", log.Message)
+	luaipt.Bind("Warningf", log.Warningf)
+	luaipt.Bind("Warning", log.Warning)
+	luaipt.Bind("Errorf", log.Errorf)
+	luaipt.Bind("Error", log.Error)
+	luaipt.path = path
+	return nil
+}
+
+func (luaipt *LuaIpt) Final() error {
+	luaipt.state.Close()
+	return nil
+}
+
+func (luaipt *LuaIpt) Bind(name string, item interface{}) error {
+	luar.Register(luaipt.state, module, luar.Map{
+		name: item,
+	})
+	return nil
+}
