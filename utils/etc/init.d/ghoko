@@ -1,0 +1,100 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:	  ghoko
+# Required-Start:    $local_fs $remote_fs $network $syslog $named
+# Required-Stop:     $local_fs $remote_fs $network $syslog $named
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: starts the ghoko server
+# Description:       starts ghoko using start-stop-daemon
+### END INIT INFO
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+NAME=ghoko
+DESC=A web application that listens to post-hooks from GitLab
+
+if [ -f /etc/$NAME.conf ]; then  
+	CONFIG=/etc/$NAME.conf
+elif [ -f $NAME.conf ]; then
+	CONFIG=$NAME.conf
+else
+	echo '[ERROR] missing configration.'
+	exit 1
+fi
+
+. $CONFIG
+
+DAEMON=/usr/bin/$NAME
+
+test -x $DAEMON
+if [ $? -ne 0 ] ; then 
+	echo '[ERROR] missing binary.'
+	exit 1
+fi
+
+set -e
+
+. /lib/lsb/init-functions
+
+
+
+start_ghoko() {
+	checkstart
+	nohup $DAEMON -addr="$ADDR" -force-auth=$FORCE_AUTH -log="$LOG" -log-level="$LOG_LEVEL" \
+		-script="$SCRIPT" -secret="$SECRET" -tls-cert="$TLS_CERT" -tls-key="$TLS_KEY" >> $LOG 2>&1 &
+}
+
+stop_ghoko() {
+	PID=`findproc|awk '{print $2;}'`
+	if [ -n "$PID" ]; then
+		kill $PID
+	fi
+	wait2stop
+}
+
+findproc() {
+	ps -AF |grep $DAEMON|grep $ADDR
+}
+
+checkstart() {
+	local l=`findproc|wc -l`
+	if [ $l -ne 0 ]; then
+		echo "[ERROR] $NAME already started."
+		exit 1
+	fi
+}
+
+wait2stop() {
+    local l=`findproc|wc -l`
+    while [ $l -ne 0 ] ; do
+        echo -ne '.'
+        sleep 0.1
+        l=`findproc|wc -l`
+    done
+}
+
+case "$1" in
+	start)
+		echo -n "Starting $DESC: "
+		start_ghoko
+		echo "$NAME started."
+		;;
+	stop)
+		echo -n "Stopping $DESC: "
+		stop_ghoko
+		echo "$NAME stoped."
+		;;
+	restart)
+		echo -n "Restarting $DESC: "
+		stop_ghoko
+		start_ghoko
+		echo "$NAME restarted."
+		;;
+	*)
+		echo "Usage: $NAME {start|stop|restart}" >&2
+		exit 1
+		;;
+esac
+
+exit 0
