@@ -25,30 +25,30 @@ type GitLabRequest struct {
 
 type GitHubRequest struct {
 	Request
-	Repo              Repository `json:"repository"`
-	Commits           []GitHubCommit
+	Repo    Repository `json:"repository"`
+	Commits []GitHubCommit
 }
 
 type GitHubCommit struct {
 	Commit
-	Added []string
-	Removed []string
+	Added    []string
+	Removed  []string
 	Modified []string
 }
 
 type GitHubRepo struct {
 	Repository
-	Pledgie string
+	Pledgie  string
 	Watchers int
-	Forks int
-	Private bool
-	Owner Author
+	Forks    int
+	Private  bool
+	Owner    Author
 }
 
 type Request struct {
-	Before	string
-	After string
-	Ref	string
+	Before string
+	After  string
+	Ref    string
 }
 
 type Commit struct {

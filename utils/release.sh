@@ -53,7 +53,8 @@ echo "" >> $target/$APP/VERSION
 echo "[INFO] Copy files ..."
 cp -R $base/usr $target/$APP
 cp -R $base/etc $target/$APP
-cp $base/setup.sh $target/$APP
+cp $base/install.sh $target/$APP
+cp $base/uninstall.sh $target/$APP
 
 echo "[INFO] Packing ..."
 f=`mktemp -u`

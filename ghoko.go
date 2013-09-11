@@ -25,6 +25,8 @@ var (
 	scriptPath = flag.String("script", "./", "Path of lua files")
 	secret     = flag.String("secret", "", "Secret token")
 	defHosting = flag.String("default", "gitlab", "Default hosted repository")
+	cert       = flag.String("tls-cert", "", "TLS cert file")
+	key        = flag.String("tls-key", "", "TLS key file")
 )
 
 func init() {
@@ -49,6 +51,12 @@ func main() {
 		p = p[:len(p)-1]
 	}
 	hook := NewHook(*addr, p, *secret, *defHosting)
+	if *cert != "" && *key != "" {
+		if err := hook.SetTLS(*cert, *key); err != nil {
+			log.Error(err)
+			return
+		}
+	}
 	go func() {
 		if e := hook.Serve(); e != nil {
 			if _, ok := e.(*net.OpError); !ok {

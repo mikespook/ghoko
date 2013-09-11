@@ -6,6 +6,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,8 +16,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"path"
+	"strings"
 )
 
 var (
@@ -30,7 +31,7 @@ type httpServer struct {
 	iptPool    *iptpool.IptPool
 	secret     string
 	scriptPath string
-	hosting string
+	hosting    string
 }
 
 func NewHook(addr, scriptPath, secret, hosting string) (srv *httpServer) {
@@ -39,8 +40,16 @@ func NewHook(addr, scriptPath, secret, hosting string) (srv *httpServer) {
 		iptPool:    iptpool.NewIptPool(NewLuaIpt),
 		scriptPath: scriptPath,
 		secret:     secret,
-		hosting: hosting,
+		hosting:    hosting,
 	}
+	return
+}
+
+func (s *httpServer) SetTLS(certFile, keyFile string) (err error) {
+	s.srv.TLSConfig = &tls.Config{}
+	s.srv.TLSConfig.NextProtos = []string{"http/1.1"}
+	s.srv.TLSConfig.Certificates = make([]tls.Certificate, 1)
+	s.srv.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
 	return
 }
 
@@ -48,6 +57,9 @@ func (s *httpServer) Serve() (err error) {
 	s.conn, err = net.Listen("tcp", s.srv.Addr)
 	if err != nil {
 		return
+	}
+	if s.srv.TLSConfig != nil {
+		s.conn = tls.NewListener(s.conn, s.srv.TLSConfig)
 	}
 	s.iptPool.OnCreate = func(ipt iptpool.ScriptIpt) error {
 		ipt.Init(s.scriptPath)
@@ -72,7 +84,7 @@ func (s *httpServer) Close() error {
 	return nil
 }
 
-func (s *httpServer) precheck(w http.ResponseWriter, r *http.Request) (p string, params []interface{}, ok bool) {
+func (s *httpServer) precheck(w http.ResponseWriter, r *http.Request) (p string, params url.Values, ok bool) {
 	if r.Method != "POST" { // only post method permited
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI,
 			ErrPostOnly)
@@ -88,20 +100,15 @@ func (s *httpServer) precheck(w http.ResponseWriter, r *http.Request) (p string,
 		ok = false
 		return
 	}
-	vs := u.Query()
-	if s.secret != vs.Get("secret") { // verify secret token
+	params = u.Query()
+	if s.secret != params.Get("secret") { // verify secret token
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrAccessDeny)
 		http.Error(w, ErrAccessDeny.Error(), 403)
 		ok = false
 		return
 	}
 	p = u.Path
-	params = make([]interface{}, len(vs))
-	i := 0
-	for v := range vs {
-		params[i] = v
-		i ++
-	}
+	params.Del("secret")
 	ok = true
 	return
 }
@@ -159,13 +166,12 @@ func (s *httpServer) split(p string) (repo string, name string) {
 	repo = GITLAB
 	sp := strings.SplitN(p, "/", 3)
 	switch sp[1] {
-		case GITHUB:
-			repo = GITHUB
-		case GITLAB:
-			repo = GITLAB
-		default:
-			repo = s.hosting
+	case GITHUB:
+		repo = GITHUB
+	case GITLAB:
+		repo = GITLAB
+	default:
+		repo = s.hosting
 	}
-	log.Debugf("%q %q %q", p, repo, sp)
 	return
 }
