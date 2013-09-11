@@ -24,7 +24,7 @@ var (
 	addr       = flag.String("addr", ":8080", "Address of http service")
 	scriptPath = flag.String("script", "./", "Path of lua files")
 	secret     = flag.String("secret", "", "Secret token")
-	mainHosting = flag.String("main", "gitlab", "Main hosted repository")
+	defHosting = flag.String("default", "gitlab", "Default hosted repository")
 )
 
 func init() {
@@ -32,23 +32,23 @@ func init() {
 		flag.Parse()
 	}
 	log.Flag()
-	if *mainHosting != GITHUB {
-		*mainHosting = GITLAB
+	if *defHosting != GITHUB {
+		*defHosting = GITLAB
 	}
 }
 
 func main() {
-	log.Message("Starting...")
-
+	log.Messagef("Starting: addr=%q script=%q default=%q",
+		*addr, *scriptPath, *defHosting)
 	defer func() {
-		log.Message("Exit.")
-		time.Sleep(time.Second)
+		log.Message("Exited!")
+		time.Sleep(time.Millisecond * 100)
 	}()
 	p := *scriptPath
 	if p[len(p)-1] == 47 {
 		p = p[:len(p)-1]
 	}
-	hook := NewHook(*addr, p, *secret, *mainHosting)
+	hook := NewHook(*addr, p, *secret, *defHosting)
 	go func() {
 		if e := hook.Serve(); e != nil {
 			if _, ok := e.(*net.OpError); !ok {

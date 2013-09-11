@@ -12,7 +12,7 @@
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 NAME=ghoko
-DESC=A web application that listens to post-hooks from GitLab
+DESC="GHoKo"
 
 if [ -f /etc/$NAME.conf ]; then  
 	CONFIG=/etc/$NAME.conf
@@ -41,8 +41,8 @@ set -e
 
 start_ghoko() {
 	checkstart
-	nohup $DAEMON -addr="$ADDR" -force-auth=$FORCE_AUTH -log="$LOG" -log-level="$LOG_LEVEL" \
-		-script="$SCRIPT" -secret="$SECRET" -tls-cert="$TLS_CERT" -tls-key="$TLS_KEY" >> $LOG 2>&1 &
+	nohup $DAEMON -addr="$ADDR" -log="$LOG" -log-level="$LOG_LEVEL" \
+		-script="$SCRIPT" -secret="$SECRET" >> $LOG 2>&1 &
 }
 
 stop_ghoko() {
@@ -60,7 +60,7 @@ findproc() {
 checkstart() {
 	local l=`findproc|wc -l`
 	if [ $l -ne 0 ]; then
-		echo "[ERROR] $NAME already started."
+		echo "[ERROR] $DESC already started."
 		exit 1
 	fi
 }
@@ -78,18 +78,18 @@ case "$1" in
 	start)
 		echo -n "Starting $DESC: "
 		start_ghoko
-		echo "$NAME started."
+		echo "$DESC started."
 		;;
 	stop)
 		echo -n "Stopping $DESC: "
 		stop_ghoko
-		echo "$NAME stoped."
+		echo "$DESC stoped."
 		;;
 	restart)
 		echo -n "Restarting $DESC: "
 		stop_ghoko
 		start_ghoko
-		echo "$NAME restarted."
+		echo "$DESC restarted."
 		;;
 	*)
 		echo "Usage: $NAME {start|stop|restart}" >&2

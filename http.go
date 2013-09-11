@@ -102,6 +102,7 @@ func (s *httpServer) precheck(w http.ResponseWriter, r *http.Request) (p string,
 		params[i] = v
 		i ++
 	}
+	ok = true
 	return
 }
 
@@ -140,7 +141,6 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			ipt.Bind("Request", &req)
-			
 		}
 		ipt.Bind("Hosting", repo)
 		if err := ipt.Exec(name, params); err != nil {
@@ -156,16 +156,16 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 
 func (s *httpServer) split(p string) (repo string, name string) {
 	name = path.Base(p)
-	repo = "gitlab"
+	repo = GITLAB
 	sp := strings.SplitN(p, "/", 3)
-	if len(sp) < 3 {
-		repo = s.hosting
-		return
-	} else {
-		repo = sp[1]
+	switch sp[1] {
+		case GITHUB:
+			repo = GITHUB
+		case GITLAB:
+			repo = GITLAB
+		default:
+			repo = s.hosting
 	}
-	if repo != GITHUB {
-		repo = GITLAB	
-	}
+	log.Debugf("%q %q %q", p, repo, sp)
 	return
 }
