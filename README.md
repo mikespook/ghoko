@@ -104,9 +104,9 @@ See LICENSE for more information.
 [github]: http://www.github.com
 [ci]: http://en.wikipedia.org/wiki/Continuous_integration
 [golang]: http://golang.org
-[4]: https://github.com/mikespook/golib
-[5]: https://github.com/aarzilli/golua
-[6]: https://github.com/stevedonovan/luar
+[golib]: https://github.com/mikespook/golib
+[golua]: https://github.com/aarzilli/golua
+[luar]: https://github.com/stevedonovan/luar
 [demo]: https://github.com/mikespook/ghoko/blob/master/foobar.lua
 [blog]: http://mikespook.com
 [twitter]: http://twitter.com/mikespook
