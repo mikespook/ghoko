@@ -8,6 +8,7 @@ package main
 import (
 	"flag"
 	"github.com/mikespook/golib/log"
+	"github.com/mikespook/golib/pid"
 	"github.com/mikespook/golib/signal"
 	"net"
 	"os"
@@ -27,6 +28,7 @@ var (
 	defHosting = flag.String("defualt", GITLAB, "Default code hosting site")
 	cert       = flag.String("tls-cert", "", "TLS cert file")
 	key        = flag.String("tls-key", "", "TLS key file")
+	pf = flag.String("pid", "", "PID file")
 )
 
 func init() {
@@ -39,6 +41,18 @@ func init() {
 func main() {
 	log.Messagef("Starting: addr=%q script=%q default=%q",
 		*addr, *scriptPath, *defHosting)
+	if *pf != "" {
+	    if p, err := pid.New(*pf); err != nil {
+		    log.Error(err)
+	    } else {
+			defer func() {
+				if err := p.Close(); err != nil {
+					log.Error(err)
+				}
+			}()
+			log.Messagef("PID: %d file=%q", p.Pid, *pf)
+		}
+	}
 	defer func() {
 		log.Message("Exited!")
 		time.Sleep(time.Millisecond * 100)

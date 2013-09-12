@@ -42,15 +42,20 @@ set -e
 start_ghoko() {
 	checkstart
 	nohup $DAEMON -addr="$ADDR" -log="$LOG" -log-level="$LOG_LEVEL" \
-		-script="$SCRIPT" -secret="$SECRET" >> $LOG 2>&1 &
+		-script="$SCRIPT" -secret="$SECRET" -pid="$PID" >> $LOG 2>&1 &
+    while [ ! -f $PID ] ; do
+        sleep 0.1
+    done
+	cat $PID
 }
 
 stop_ghoko() {
-	PID=`findproc|awk '{print $2;}'`
-	if [ -n "$PID" ]; then
-		kill $PID
+	local p=`findproc|awk '{print $2;}'`
+	if [ -n "$p" ]; then
+		kill -INT $p
 	fi
 	wait2stop
+	echo $p
 }
 
 findproc() {
@@ -68,7 +73,6 @@ checkstart() {
 wait2stop() {
     local l=`findproc|wc -l`
     while [ $l -ne 0 ] ; do
-        echo -ne '.'
         sleep 0.1
         l=`findproc|wc -l`
     done
@@ -77,19 +81,19 @@ wait2stop() {
 case "$1" in
 	start)
 		echo -n "Starting $DESC: "
-		start_ghoko
-		echo "$DESC started."
+		p=`start_ghoko`
+		echo "$DESC started ($p)."
 		;;
 	stop)
 		echo -n "Stopping $DESC: "
-		stop_ghoko
-		echo "$DESC stoped."
+		p=`stop_ghoko`
+		echo "$DESC stoped ($p)."
 		;;
 	restart)
 		echo -n "Restarting $DESC: "
-		stop_ghoko
-		start_ghoko
-		echo "$DESC restarted."
+		old=`stop_ghoko`
+		new=`start_ghoko`
+		echo "$DESC restarted ($old => $new)."
 		;;
 	*)
 		echo "Usage: $NAME {start|stop|restart}" >&2
