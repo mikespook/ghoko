@@ -72,9 +72,13 @@ if [ "$HOST" != "" ]; then
 	[ "$PORT" == "" ] && PORT=22
 	[ "$USR" == "" ] && USR=$USER
 	echo "[INFO] Uploading ..."
-	scp -P $PORT $f $USR@$HOST:/tmp/$APP.tar.gz
-	read -p "Press [Enter] key to start unpack..."
-	ssh -p $PORT $USR@$HOST "tar zxvf ${f}"
+	scp -P $PORT $f $USR@$HOST:$f
+	read -p "Unpack? [y/n]" unpack
+	if [ "$unpack" == "y" ] ; then
+		ssh -p $PORT $USR@$HOST "tar zxvf $f && rm $f"
+	else
+		ssh -p $PORT $USR@$HOST "mv $f ~/$APP.tar.gz"
+	fi
 fi
 
 rm -rf $target
