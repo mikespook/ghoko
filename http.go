@@ -17,12 +17,10 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"strings"
 )
 
 var (
 	ErrAccessDeny = errors.New("Access Deny")
-	ErrPostOnly   = errors.New("POST method only")
 )
 
 type httpServer struct {
@@ -84,72 +82,25 @@ func (s *httpServer) Close() error {
 	return nil
 }
 
-func (s *httpServer) precheck(w http.ResponseWriter, r *http.Request) (p string, params url.Values, ok bool) {
-	if r.Method != "POST" { // only post method permited
-		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI,
-			ErrPostOnly)
-		http.Error(w, ErrPostOnly.Error(), 500)
-		ok = false
-		return
-	}
-
-	u, err := url.Parse(r.RequestURI)
-	if err != nil {
-		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
-		http.Error(w, err.Error(), 500)
-		ok = false
-		return
-	}
-	params = u.Query()
-	if s.secret != params.Get("secret") { // verify secret token
-		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrAccessDeny)
-		http.Error(w, ErrAccessDeny.Error(), 403)
-		ok = false
-		return
-	}
-	p = u.Path
-	params.Del("secret")
-	ok = true
-	return
-}
-
 func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
-	p, params, ok := s.precheck(w, r)
-	if !ok {
-		return
-	}
-	body, err := ioutil.ReadAll(r.Body)
+	host, name, params, req, err := s.prepare(r)
 	if err != nil {
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), err.Errno())
 		return
 	}
-	defer r.Body.Close()
-
 	go func() {
 		ipt := s.iptPool.Get()
 		defer s.iptPool.Put(ipt)
-		repo, name := s.split(p)
-		if repo == GITLAB {
-			var req GitLabRequest
-			err := json.Unmarshal(body, &req)
-			if err != nil {
-				log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
-					r.RequestURI, err.Error())
-				return
+		if req != nil {
+			ipt.Bind("Host", host)
+			switch r := req.(type) {
+			case GitHubRequest:
+				ipt.Bind("Request", r)
+			case GitLabRequest:
+				ipt.Bind("Request", r)
 			}
-			ipt.Bind("Request", &req)
-		} else {
-			var req GitHubRequest
-			err := json.Unmarshal(body, &req)
-			if err != nil {
-				log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
-					r.RequestURI, err.Error())
-				return
-			}
-			ipt.Bind("Request", &req)
 		}
-		ipt.Bind("Hosting", repo)
 		if err := ipt.Exec(name, params); err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, err.Error())
@@ -161,17 +112,47 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func (s *httpServer) split(p string) (repo string, name string) {
-	name = path.Base(p)
-	repo = GITLAB
-	sp := strings.SplitN(p, "/", 3)
-	switch sp[1] {
-	case GITHUB:
-		repo = GITHUB
-	case GITLAB:
-		repo = GITLAB
-	default:
-		repo = s.hosting
+func (s *httpServer) prepare(r *http.Request) (host, name string, params url.Values, obj interface{}, gerr *ghokoErr) {
+	u, err := url.Parse(r.RequestURI)
+	if err != nil {
+		gerr = NewError(err.Error(), 500)
+		return
+	}
+	params = u.Query()
+	if s.secret != params.Get("secret") { // verify secret token
+		gerr = NewError(ErrAccessDeny.Error(), 403)
+		return
+	}
+	params.Del("secret")
+	name = path.Base(u.Path)
+	host = params.Get("host")
+	if host == "" {
+		host = s.hosting
+	}
+	params.Del("default")
+	if r.Method == "POST" {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			gerr = NewError(err.Error(), 500)
+			return
+		}
+		defer r.Body.Close()
+		switch host {
+		case GITLAB:
+			var req GitLabRequest
+			if err = json.Unmarshal(body, &req); err != nil {
+				gerr = NewError(err.Error(), 500)
+				return
+			}
+			obj = req
+		case GITHUB:
+			var req GitHubRequest
+			if err = json.Unmarshal(body, &req); err != nil {
+				gerr = NewError(err.Error(), 500)
+				return
+			}
+			obj = req
+		}
 	}
 	return
 }

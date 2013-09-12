@@ -65,3 +65,23 @@ type Repository struct {
 	Description string
 	Homepage    string
 }
+
+type ghokoErr struct {
+	msg    string
+	status int
+}
+
+func NewError(msg string, status int) (err *ghokoErr) {
+	return &ghokoErr{
+		msg:    msg,
+		status: status,
+	}
+}
+
+func (err *ghokoErr) Error() string {
+	return err.msg
+}
+
+func (err *ghokoErr) Errno() int {
+	return err.status
+}

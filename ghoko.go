@@ -24,7 +24,7 @@ var (
 	addr       = flag.String("addr", ":8080", "Address of http service")
 	scriptPath = flag.String("script", "./", "Path of lua files")
 	secret     = flag.String("secret", "", "Secret token")
-	defHosting = flag.String("default", "gitlab", "Default hosted repository")
+	defHosting = flag.String("defualt", GITLAB, "Default code hosting site")
 	cert       = flag.String("tls-cert", "", "TLS cert file")
 	key        = flag.String("tls-key", "", "TLS key file")
 )
@@ -34,9 +34,6 @@ func init() {
 		flag.Parse()
 	}
 	log.Flag()
-	if *defHosting != GITHUB {
-		*defHosting = GITLAB
-	}
 }
 
 func main() {
