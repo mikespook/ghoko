@@ -67,11 +67,11 @@ To set GitLab's web hook: Your repo --> settrings --> Web Hooks.
 To set GitHub's web hook is a little more complicated.
 Following: Your repo --> Settings --> Service Hooks --> WebHook URLs.
 
-Here is an example for gitlab (gitlab.lua):
+Here is an example for gitlab ([gitlab.lua][gitlab-lua]):
 
 	http://192.168.1.100/gitlab?secret=phrase
 
-or for github (github.lua):
+or for github ([github.lua][github-lua]):
 
 	http://192.168.1.100/gitlab?secret=phrase
 
