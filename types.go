@@ -6,82 +6,26 @@
 package main
 
 import (
-	"time"
+	"encoding/json"
+	"github.com/stevedonovan/luar"
+	"net/url"
 )
 
-type Author struct {
-	Name  string
-	Email string
-}
+type Params luar.Map
 
-type GitLabRequest struct {
-	Request
-	UserId            int        `json:"user_id"`
-	UserName          string     `json:"user_name"`
-	Repo              Repository `json:"repository"`
-	Commits           []Commit
-	TotalCommitsCount int `json:"total_commits_count"`
-}
-
-type GitHubRequest struct {
-	Request
-	Repo    Repository `json:"repository"`
-	Commits []GitHubCommit
-}
-
-type GitHubCommit struct {
-	Commit
-	Added    []string
-	Removed  []string
-	Modified []string
-}
-
-type GitHubRepo struct {
-	Repository
-	Pledgie  string
-	Watchers int
-	Forks    int
-	Private  bool
-	Owner    Author
-}
-
-type Request struct {
-	Before string
-	After  string
-	Ref    string
-}
-
-type Commit struct {
-	Id        string
-	Message   string
-	Timestamp time.Time
-	Url       string
-	Author    Author `json:"author"`
-}
-
-type Repository struct {
-	Name        string
-	Url         string
-	Description string
-	Homepage    string
-}
-
-type ghokoErr struct {
-	msg    string
-	status int
-}
-
-func NewError(msg string, status int) (err *ghokoErr) {
-	return &ghokoErr{
-		msg:    msg,
-		status: status,
+func (p Params) AddValues(values url.Values) {
+	for k, v := range values {
+		p[k] = v
 	}
 }
 
-func (err *ghokoErr) Error() string {
-	return err.msg
-}
-
-func (err *ghokoErr) Errno() int {
-	return err.status
+func (p Params) AddJSON(data []byte) (err error) {
+	var tmp luar.Map
+	if err = json.Unmarshal(data, &tmp); err != nil {
+		return
+	}
+	for k, v := range tmp {
+		p[k] = v
+	}
+	return
 }

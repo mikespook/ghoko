@@ -12,6 +12,7 @@ import (
 	"github.com/mikespook/golib/signal"
 	"net"
 	"os"
+	"path"
 	"syscall"
 	"time"
 )
@@ -25,10 +26,9 @@ var (
 	addr       = flag.String("addr", ":8080", "Address of http service")
 	scriptPath = flag.String("script", "./", "Path of lua files")
 	secret     = flag.String("secret", "", "Secret token")
-	defHosting = flag.String("defualt", GITLAB, "Default code hosting site")
 	cert       = flag.String("tls-cert", "", "TLS cert file")
 	key        = flag.String("tls-key", "", "TLS key file")
-	pf = flag.String("pid", "", "PID file")
+	pf         = flag.String("pid", "", "PID file")
 )
 
 func init() {
@@ -39,12 +39,12 @@ func init() {
 }
 
 func main() {
-	log.Messagef("Starting: addr=%q script=%q default=%q",
-		*addr, *scriptPath, *defHosting)
+	log.Messagef("Starting: addr=%q script=%q",
+		*addr, *scriptPath)
 	if *pf != "" {
-	    if p, err := pid.New(*pf); err != nil {
-		    log.Error(err)
-	    } else {
+		if p, err := pid.New(*pf); err != nil {
+			log.Error(err)
+		} else {
 			defer func() {
 				if err := p.Close(); err != nil {
 					log.Error(err)
@@ -57,11 +57,8 @@ func main() {
 		log.Message("Exited!")
 		time.Sleep(time.Millisecond * 100)
 	}()
-	p := *scriptPath
-	if p[len(p)-1] == 47 {
-		p = p[:len(p)-1]
-	}
-	hook := NewHook(*addr, p, *secret, *defHosting)
+	p := path.Clean(*scriptPath)
+	hook := NewHook(*addr, p, *secret)
 	if *cert != "" && *key != "" {
 		if err := hook.SetTLS(*cert, *key); err != nil {
 			log.Error(err)

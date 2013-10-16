@@ -10,7 +10,6 @@ import (
 	"github.com/mikespook/golib/iptpool"
 	"github.com/mikespook/golib/log"
 	"github.com/stevedonovan/luar"
-	"net/url"
 	"path"
 )
 
@@ -27,17 +26,7 @@ func NewLuaIpt() iptpool.ScriptIpt {
 
 func (luaipt *LuaIpt) Exec(name string, params interface{}) error {
 	f := path.Join(luaipt.path, name+".lua")
-	luaP := luar.Map{}
-	if p, ok := params.(url.Values); ok {
-		for k, v := range p {
-			if len(v) > 1 {
-				luaP[k] = v
-			} else {
-				luaP[k] = v[0]
-			}
-		}
-	}
-	luaipt.Bind("Params", luaP)
+	luaipt.Bind("Params", params)
 	return luaipt.state.DoFile(f)
 }
 
