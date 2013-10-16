@@ -61,6 +61,7 @@ func (s *httpServer) Serve() (err error) {
 	}
 	s.iptPool.OnCreate = func(ipt iptpool.ScriptIpt) error {
 		ipt.Init(s.scriptPath)
+		ipt.Bind("Call", s.call)
 		return nil
 	}
 	http.HandleFunc("/", s.handler)
@@ -113,21 +114,26 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	name := path.Base(u.Path)
-	id := s.idgen.Id()
+	id := s.idgen.Id().(string)
 	go func() {
-		ipt := s.iptPool.Get()
-		defer s.iptPool.Put(ipt)
-		ipt.Bind("Id", id)
-		if err := ipt.Exec(name, params); err != nil {
+		if err := s.call(id, name, params); err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, err.Error())
 			return
 		}
 		log.Messagef("[%s] %s \"Success\"", r.RemoteAddr,
 			r.RequestURI)
+
 	}()
-	if _, err := w.Write([]byte(id.(string))); err != nil {
+	if _, err := w.Write([]byte(id)); err != nil {
 		log.Errorf("[%s] %s %s \"%s\"", r.RemoteAddr,
 			r.RequestURI, id, err)
 	}
+}
+
+func (s *httpServer) call(id, name string, params Params) (err error) {
+	ipt := s.iptPool.Get()
+	defer s.iptPool.Put(ipt)
+	ipt.Bind("Id", id)
+	return ipt.Exec(name, params)
 }

@@ -57,7 +57,16 @@ Scripting
 GHoKo use Lua as the scripting language. GHoKo will pass the Request into
 Lua script as a user data.
 
-You can use this user data in the [Lua script][demo].
+You can use user data in the [Lua script][demo].
+
+Following variables and functions can be called in Lua:
+ 
+ * ghoko.Params - Params passed by URL\POST-BODY(JSON format)
+ * ghoko.Call(id, name, params) - Executing a script in lua file
+ * ghoko.Debug(msg)/ghoko.Debugf(format, msg) - Output debug infomations
+ * ghoko.Message(msg)/ghoko.Messagef(format, msg) - Output message infomations
+ * ghoko.Warning(msg)/ghoko.Warningf(format, msg) - Output warning infomations
+ * ghoko.Error(err)/ghoko.Errorf(format, msg) - Output error infomations
 
 Web Hook
 --------
@@ -101,5 +110,5 @@ See LICENSE for more information.
 [bitbucket]: https://bitbucket.org/
 [github-lua]: https://github.com/mikespook/ghoko/blob/master/github.lua
 [gitlab-lua]: https://github.com/mikespook/ghoko/blob/master/gitlab.lua
-[travis-img]: https://travis-ci.org/mikespook/z-node.png?branch=master
-[travis]: https://travis-ci.org/mikespook/z-node
+[travis-img]: https://travis-ci.org/mikespook/ghoko.png?branch=master
+[travis]: https://travis-ci.org/mikespook/ghoko
