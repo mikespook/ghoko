@@ -2,3 +2,5 @@ language: go
 go:
   - release
   - tip
+before_install:
+  - sudo apt-get install -qq liblua5.1-0-dev

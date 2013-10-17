@@ -4,7 +4,11 @@ GHoKo
 [![Build Status][travis-img]][travis]
 
 GHoKo is a web application that listens to web-hooks, scripted by Lua and
-written in [Golang][golang]. Web-hooks usually is used for [CI][ci].
+written in [Golang][golang]. Web-hooks usually are used for [CI][ci], 
+[Automated testing][auto-testing] or something else.
+
+For example, GHoKo has been used in many browser based game projects for
+CI and system operations.
 
 Dependency
 ==========
@@ -12,11 +16,21 @@ Dependency
  * [mikespook/golib][golib]
  * [aarzilli/golua][golua]
  * [stevedonovan/luar][luar]
+ * liblua5.1-0-dev for Ubuntu
 
 Installing
 ==========
 
+All useful scripts were put at the directory [shell][shell].
+
+Befor building, the proper lua librarie must be installed.
+E.g. Ubuntu 13.04, it is `liblua5.1-0-dev`.
+
+Then:
+
 	go get github.com/mikespook/ghoko
+
+Have a fun!
 
 Usage
 =====
@@ -28,7 +42,7 @@ Executing following command:
 
 	$ ${fullpath}/ghoko -h
 
-We will get:
+Some help information:
 
 	Usage of ./ghoko:
 		-addr=":8080": Address of http service
@@ -44,12 +58,14 @@ We will get:
 
 The pattern of hook URL is 
 
-	${schema}://${addr}/${default}/${hook}?secret=${secret}&${params}
+	${schema}://${addr}/no-mater-what-here-is/${hook}?secret=${secret}&${params}
 
 $schema could be HTTP or HTTPS either. When both two `tls-*` flags were
 specified correctly, The HTTPS will be used.
 
-$params can be used for passing custom values into script.
+$params can be used for passing custom values into script through URL. 
+HTTP method, POST is also accepted. Passing enconded JSON data through POST-Body.
+Both of them will combine into the global variable `ghoko.Params` in Lua scripts.
 
 Scripting
 ---------
@@ -82,7 +98,9 @@ Here is an example for gitlab ([gitlab.lua][gitlab-lua]):
 
 or for github ([github.lua][github-lua]):
 
-	http://192.168.1.100/gitlab?secret=phrase
+	http://192.168.1.100/github?secret=phrase
+
+We have writen demo scripts for you. The scripts will print the repo and commits's informations.
 
 Authors
 =======
@@ -112,3 +130,5 @@ See LICENSE for more information.
 [gitlab-lua]: https://github.com/mikespook/ghoko/blob/master/gitlab.lua
 [travis-img]: https://travis-ci.org/mikespook/ghoko.png?branch=master
 [travis]: https://travis-ci.org/mikespook/ghoko
+[auto-testing]: http://en.wikipedia.org/wiki/Test_automation
+[back-job]:  
