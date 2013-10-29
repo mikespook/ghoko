@@ -58,14 +58,19 @@ Some help information:
 
 The pattern of hook URL is 
 
-	${schema}://${addr}/no-mater-what-here-is/${hook}?secret=${secret}&${params}
+	${schema}://${addr}/no-mater-what-here-is/${hook}?secret=${secret}&sync={true|false}&${params}
 
-$schema could be HTTP or HTTPS either. When both two `tls-*` flags were
+`$schema` could be HTTP or HTTPS either. When both two `tls-*` flags were
 specified correctly, The HTTPS will be used.
 
-$params can be used for passing custom values into script through URL. 
+`$params` can be used for passing custom values into script through URL. 
 HTTP method, POST is also accepted. Passing enconded JSON data through POST-Body.
 Both of them will combine into the global variable `ghoko.Params` in Lua scripts.
+
+Usually, GHoKo calls lua scripts asynchronous. `$sync` is a special param for
+calling ghoko in synchronized way. When sync is equal `ture`(string), 
+`ghoko.Write` and `ghoko.WriteHeader` can be used for writing something to 
+HTTP clients.
 
 Scripting
 ---------
@@ -83,6 +88,8 @@ Following variables and functions can be called in Lua:
  * ghoko.Message(msg)/ghoko.Messagef(format, msg) - Output message infomations
  * ghoko.Warning(msg)/ghoko.Warningf(format, msg) - Output warning infomations
  * ghoko.Error(err)/ghoko.Errorf(format, msg) - Output error infomations
+ * ghoko.Write(msg) - Write something to HTTP clients (sync only)
+ * ghoko.WriteHeader(status) - Assign HTTP status (sync only)
 
 Web Hook
 --------

@@ -97,7 +97,7 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 			fallthrough
 		case "POST":
 		default:
-			log.Errorf("[%s] %s \"%s %s\"", r.RemoteAddr, r.RequestURI, ErrMethodNotAllowed, r.Method)
+			log.Errorf("[%s] %s \"%s: %s\"", r.RemoteAddr, r.RequestURI, ErrMethodNotAllowed, r.Method)
 			http.Error(w, ErrMethodNotAllowed.Error(), 405)
 			return
 	}
@@ -132,16 +132,31 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 	}
 	name := path.Base(u.Path)
 	id := s.idgen.Id().(string)
-	go func() {
-		if err := s.call(id, name, params); err != nil {
+	f := func(sync bool) {
+		ipt := s.iptPool.Get()
+		defer s.iptPool.Put(ipt)
+		ipt.Bind("Id", id)
+		if sync {
+			ipt.Bind("Write", w.Write)
+			ipt.Bind("WriteHeader", w.WriteHeader)
+		}
+		if	err := ipt.Exec(name, params); err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, err.Error())
+			if sync {
+				http.Error(w, err.Error(), 500)
+			}
 			return
 		}
 		log.Messagef("[%s] %s \"Success\"", r.RemoteAddr,
 			r.RequestURI)
+	}
 
-	}()
+	if p.Get("sync") == "true" {
+		f(true)
+	} else {
+		go f(false)
+	}
 	if _, err := w.Write([]byte(id)); err != nil {
 		log.Errorf("[%s] %s %s \"%s\"", r.RemoteAddr,
 			r.RequestURI, id, err)
@@ -149,8 +164,9 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *httpServer) call(id, name string, params Params) (err error) {
-	ipt := s.iptPool.Get()
-	defer s.iptPool.Put(ipt)
-	ipt.Bind("Id", id)
-	return ipt.Exec(name, params)
+       ipt := s.iptPool.Get()
+       defer s.iptPool.Put(ipt)
+       ipt.Bind("Id", id)
+       return ipt.Exec(name, params)
 }
+
