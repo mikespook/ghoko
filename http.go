@@ -154,12 +154,13 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 
 	if p.Get("sync") == "true" {
 		f(true)
+		w.Header().Set("Ghoko-Id", id)
 	} else {
 		go f(false)
-	}
-	if _, err := w.Write([]byte(id)); err != nil {
-		log.Errorf("[%s] %s %s \"%s\"", r.RemoteAddr,
-			r.RequestURI, id, err)
+		if _, err := w.Write([]byte(id)); err != nil {
+			log.Errorf("[%s] %s %s \"%s\"", r.RemoteAddr,
+				r.RequestURI, id, err)
+		}
 	}
 }
 
