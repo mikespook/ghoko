@@ -83,6 +83,13 @@ func (s *httpServer) Close() error {
 	return nil
 }
 
+func (s *httpServer) verify(p url.Values) bool {
+	if (s.secret == "") {
+		return true;
+	}
+	return s.secret == p.Get("secret")
+}
+
 func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(r.RequestURI)
 	if err != nil {
@@ -91,7 +98,7 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := u.Query()
-	if s.secret != p.Get("secret") { // verify secret token
+	if s.verify(p) { // verify secret token
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrAccessDeny)
 		http.Error(w, err.Error(), 403)
 		return

@@ -131,4 +131,4 @@ See LICENSE for more information.
 [travis-img]: https://travis-ci.org/mikespook/ghoko.png?branch=master
 [travis]: https://travis-ci.org/mikespook/ghoko
 [auto-testing]: http://en.wikipedia.org/wiki/Test_automation
-[back-job]:  
+[shell]: https://github.com/mikespook/ghoko/tree/master/shell  
