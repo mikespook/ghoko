@@ -21,6 +21,7 @@ import (
 
 var (
 	ErrAccessDeny = errors.New("Access Deny")
+	ErrMethodNotAllowed = errors.New("Method Not Allowed")
 )
 
 type httpServer struct {
@@ -91,6 +92,15 @@ func (s *httpServer) verify(p url.Values) bool {
 }
 
 func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+		case "GET":
+			fallthrough
+		case "POST":
+		default:
+			log.Errorf("[%s] %s \"%s %s\"", r.RemoteAddr, r.RequestURI, ErrMethodNotAllowed, r.Method)
+			http.Error(w, ErrMethodNotAllowed.Error(), 405)
+			return
+	}
 	u, err := url.Parse(r.RequestURI)
 	if err != nil {
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
@@ -98,7 +108,7 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := u.Query()
-	if s.verify(p) { // verify secret token
+	if ! s.verify(p) { // verify secret token
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrAccessDeny)
 		http.Error(w, err.Error(), 403)
 		return
