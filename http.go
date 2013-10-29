@@ -110,7 +110,7 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 	p := u.Query()
 	if ! s.verify(p) { // verify secret token
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrAccessDeny)
-		http.Error(w, err.Error(), 403)
+		http.Error(w, ErrAccessDeny.Error(), 403)
 		return
 	}
 	p.Del("secret")

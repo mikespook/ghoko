@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	addr       = flag.String("addr", ":8080", "Address of http service")
+	addr       = flag.String("addr", ":3080", "Address of http service")
 	scriptPath = flag.String("script", "./", "Path of lua files")
 	secret     = flag.String("secret", "", "Secret token")
 	cert       = flag.String("tls-cert", "", "TLS cert file")
