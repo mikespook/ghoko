@@ -22,6 +22,7 @@ import (
 var (
 	ErrAccessDeny = errors.New("Access Deny")
 	ErrMethodNotAllowed = errors.New("Method Not Allowed")
+	ErrSyncNeeded = errors.New("`sync` param needed")
 )
 
 type httpServer struct {
@@ -136,10 +137,21 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 		ipt := s.iptPool.Get()
 		defer s.iptPool.Put(ipt)
 		ipt.Bind("Id", id)
-		if sync {
-			ipt.Bind("Write", w.Write)
-			ipt.Bind("WriteHeader", w.WriteHeader)
-		}
+		ipt.Bind("WriteBody", func(str string) (err error) {
+			if !sync {
+				return ErrSyncNeeded
+			}
+			_, err = w.Write([]byte(str))
+			return
+		})
+		ipt.Bind("WriteHeader", func(status int) error {
+			if !sync {
+				return ErrSyncNeeded
+			}
+			w.WriteHeader(status)
+			return nil
+		})
+
 		if	err := ipt.Exec(name, params); err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, err.Error())
