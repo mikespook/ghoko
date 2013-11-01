@@ -7,6 +7,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/mikespook/golib/idgen"
@@ -20,9 +21,9 @@ import (
 )
 
 var (
-	ErrAccessDeny = errors.New("Access Deny")
+	ErrAccessDeny       = errors.New("Access Deny")
 	ErrMethodNotAllowed = errors.New("Method Not Allowed")
-	ErrSyncNeeded = errors.New("`sync` param needed")
+	ErrSyncNeeded       = errors.New("`sync` param needed")
 )
 
 type httpServer struct {
@@ -64,6 +65,9 @@ func (s *httpServer) Serve() (err error) {
 	s.iptPool.OnCreate = func(ipt iptpool.ScriptIpt) error {
 		ipt.Init(s.scriptPath)
 		ipt.Bind("Call", s.call)
+		ipt.Bind("Secret", s.secret)
+		ipt.Bind("EncodeJson", s.jsondecode)
+		ipt.Bind("DecodeJson", s.jsondecode)
 		return nil
 	}
 	http.HandleFunc("/", s.handler)
@@ -86,21 +90,21 @@ func (s *httpServer) Close() error {
 }
 
 func (s *httpServer) verify(p url.Values) bool {
-	if (s.secret == "") {
-		return true;
+	if s.secret == "" {
+		return true
 	}
 	return s.secret == p.Get("secret")
 }
 
 func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-		case "GET":
-			fallthrough
-		case "POST":
-		default:
-			log.Errorf("[%s] %s \"%s: %s\"", r.RemoteAddr, r.RequestURI, ErrMethodNotAllowed, r.Method)
-			http.Error(w, ErrMethodNotAllowed.Error(), 405)
-			return
+	case "GET":
+		fallthrough
+	case "POST":
+	default:
+		log.Errorf("[%s] %s \"%s: %s\"", r.RemoteAddr, r.RequestURI, ErrMethodNotAllowed, r.Method)
+		http.Error(w, ErrMethodNotAllowed.Error(), 405)
+		return
 	}
 	u, err := url.Parse(r.RequestURI)
 	if err != nil {
@@ -109,7 +113,7 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := u.Query()
-	if ! s.verify(p) { // verify secret token
+	if !s.verify(p) { // verify secret token
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrAccessDeny)
 		http.Error(w, ErrAccessDeny.Error(), 403)
 		return
@@ -152,7 +156,7 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 			return nil
 		})
 
-		if	err := ipt.Exec(name, params); err != nil {
+		if err := ipt.Exec(name, params); err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, err.Error())
 			if sync {
@@ -177,9 +181,28 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *httpServer) call(id, name string, params Params) (err error) {
-       ipt := s.iptPool.Get()
-       defer s.iptPool.Put(ipt)
-       ipt.Bind("Id", id)
-       return ipt.Exec(name, params)
+	ipt := s.iptPool.Get()
+	defer s.iptPool.Put(ipt)
+	ipt.Bind("Id", id)
+	return ipt.Exec(name, params)
 }
 
+func (s *httpServer) callRemote(id, name string, params Params) (err error) {
+	ipt := s.iptPool.Get()
+	defer s.iptPool.Put(ipt)
+	ipt.Bind("Id", id)
+	return ipt.Exec(name, params)
+}
+
+func (s *httpServer) jsonencode(data map[string]interface{}) (jsonBlod string, err error) {
+	var b []byte
+	if b, err = json.Marshal(data); err == nil {
+		jsonBlod = string(b)
+	}
+	return
+}
+
+func (s *httpServer) jsondecode(jsonBlod string) (data map[string]interface{}, err error) {
+	err = json.Unmarshal([]byte(jsonBlod), &data)
+	return
+}
