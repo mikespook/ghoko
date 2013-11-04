@@ -90,8 +90,6 @@ Following variables and functions can be called in Lua:
  * ghoko.Error(err)/ghoko.Errorf(format, msg) - Output error infomations
  * ghoko.Write(msg) - Write something to HTTP clients (sync only)
  * ghoko.WriteHeader(status) - Assign HTTP status (sync only)
- * ghoko.EncodeJson(data) - Encoding data to json string
- * ghoko.DecodeJson(json) - Decoding json string to data
 
 Web Hook
 --------

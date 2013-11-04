@@ -66,8 +66,6 @@ func (s *httpServer) Serve() (err error) {
 		ipt.Init(s.scriptPath)
 		ipt.Bind("Call", s.call)
 		ipt.Bind("Secret", s.secret)
-		ipt.Bind("EncodeJson", s.jsondecode)
-		ipt.Bind("DecodeJson", s.jsondecode)
 		return nil
 	}
 	http.HandleFunc("/", s.handler)
