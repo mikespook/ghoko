@@ -171,7 +171,7 @@ func (s *httpServer) handler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Ghoko-Id", id)
 	} else {
 		go f(false)
-		if _, err := w.Write([]byte(id)); err != nil {
+		if _, err := w.Write([]byte(fmt.Sprintf("\"%s\"", id))); err != nil {
 			log.Errorf("[%s] %s %s \"%s\"", r.RemoteAddr,
 				r.RequestURI, id, err)
 		}
