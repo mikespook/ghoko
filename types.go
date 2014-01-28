@@ -3,7 +3,7 @@
 // Use of this source code is governed by a commercial
 // license that can be found in the LICENSE file.
 
-package main
+package ghoko
 
 import (
 	"encoding/json"

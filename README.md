@@ -28,6 +28,10 @@ E.g. Ubuntu 13.04, it is `liblua5.1-0-dev`.
 
 Then:
 
+	go get github.com/mikespook/ghoko/ghoko
+
+The ghoko library implement http.Handler and can be embeded into other projects.
+
 	go get github.com/mikespook/ghoko
 
 Have a fun!
@@ -81,9 +85,10 @@ Lua script as a user data.
 You can use user data in the [Lua script][demo].
 
 Following variables and functions can be called in Lua:
- 
+
+ * ghoko.Id - Every request has a global unique Id
  * ghoko.Params - Params passed by URL\POST-BODY(JSON format)
- * ghoko.Call(id, name, params) - Executing a script in lua file
+ * ghoko.Call(id, name, params) - Calling a lua script and passing params to it
  * ghoko.Debug(msg)/ghoko.Debugf(format, msg) - Output debug infomations
  * ghoko.Message(msg)/ghoko.Messagef(format, msg) - Output message infomations
  * ghoko.Warning(msg)/ghoko.Warningf(format, msg) - Output warning infomations
