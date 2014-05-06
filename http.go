@@ -43,6 +43,9 @@ func New(scriptPath, secret string) (h *ghokoHandler) {
 	h.iptPool.OnCreate = func(ipt iptpool.ScriptIpt) error {
 		ipt.Init(h.scriptPath)
 		ipt.Bind("Call", h.call)
+		ipt.Bind("Get", h.get)
+		ipt.Bind("PostJSON", h.postJson)
+		ipt.Bind("Post", h.post)
 		ipt.Bind("Secret", h.secret)
 		return nil
 	}
@@ -157,35 +160,87 @@ func (h *ghokoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *ghokoHandler) call(id, name string, params Params) error {
-	u, err := url.Parse(name)
+func (h *ghokoHandler) post(uri string, params Params) ([]byte, error) {
+	u, err := url.Parse(uri)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if u.Scheme == "http" || u.Scheme == "https" {
-		q := u.Query()
-		q.Add("secret", h.secret)
-		if id != "" {
-			q.Add("_id", id)
+	q := u.Query()
+	q.Add("secret", h.secret)
+	values := make(url.Values)
+	for k, v := range params {
+		switch v := v.(type) {
+		case []string:
+			values[k] = v
+		case string:
+			values.Add(k, v)
 		}
-		j, err := json.Marshal(params)
-		if err != nil {
-			return err
-		}
-		resp, err := http.Post(u.String(), "application/json", bytes.NewBuffer(j))
-		if err != nil {
-			return err
-		}
-		if resp.StatusCode != http.StatusOK {
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return err
-			}
-			defer resp.Body.Close()
-			return fmt.Errorf(string(body))
-		}
-		return nil
 	}
+	resp, err := http.PostForm(u.String(), values)
+	if err != nil {
+		return nil, err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(string(body))
+	}
+	return body, nil
+}
+
+func (h *ghokoHandler) postJson(uri string, params Params) ([]byte, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query()
+	q.Add("secret", h.secret)
+	j, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.Post(u.String(), "application/json", bytes.NewBuffer(j))
+	if err != nil {
+		return nil, err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(string(body))
+	}
+	return body, nil
+}
+
+func (h *ghokoHandler) get(uri string) ([]byte, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query()
+	q.Add("secret", h.secret)
+	resp, err := http.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(string(body))
+	}
+	return body, nil
+}
+
+func (h *ghokoHandler) call(id, name string, params Params) error {
 	ipt := h.iptPool.Get()
 	defer h.iptPool.Put(ipt)
 	ipt.Bind("Id", id)
