@@ -16,7 +16,7 @@ Dependency
  * [mikespook/golib][golib]
  * [aarzilli/golua][golua]
  * [stevedonovan/luar][luar]
- * liblua5.1-0-dev for Ubuntu
+ * [liblua5.1-0-dev][liblua] for Ubuntu
 
 Installing
 ==========
@@ -24,7 +24,7 @@ Installing
 All useful scripts were put at the directory [shell][shell].
 
 Befor building, the proper lua librarie must be installed.
-E.g. Ubuntu 13.04, it is `liblua5.1-0-dev`.
+E.g. Ubuntu 14.04, it is `liblua5.1-0-dev`.
 
 Then:
 
@@ -144,3 +144,4 @@ See LICENSE for more information.
 [travis]: https://travis-ci.org/mikespook/ghoko
 [auto-testing]: http://en.wikipedia.org/wiki/Test_automation
 [shell]: https://github.com/mikespook/ghoko/tree/master/shell  
+[liblua]: http://packages.ubuntu.com/trusty/liblua5.1-0-dev
