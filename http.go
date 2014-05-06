@@ -6,16 +6,18 @@
 package ghoko
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mikespook/golib/idgen"
-	"github.com/mikespook/golib/iptpool"
-	"github.com/mikespook/golib/log"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
+
+	"github.com/mikespook/golib/idgen"
+	"github.com/mikespook/golib/iptpool"
+	"github.com/mikespook/golib/log"
 )
 
 var (
@@ -106,7 +108,12 @@ func (h *ghokoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	name := path.Base(u.Path)
-	id := h.idgen.Id().(string)
+	var id string
+	if params["_id"] == nil {
+		id = h.idgen.Id().(string)
+	} else {
+		id = params["_id"].(string)
+	}
 	f := func(sync bool) {
 		ipt := h.iptPool.Get()
 		defer h.iptPool.Put(ipt)
@@ -150,7 +157,35 @@ func (h *ghokoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *ghokoHandler) call(id, name string, params Params) (err error) {
+func (h *ghokoHandler) call(id, name string, params Params) error {
+	u, err := url.Parse(name)
+	if err != nil {
+		return err
+	}
+	if u.Scheme == "http" || u.Scheme == "https" {
+		q := u.Query()
+		q.Add("secret", h.secret)
+		if id != "" {
+			q.Add("_id", id)
+		}
+		j, err := json.Marshal(params)
+		if err != nil {
+			return err
+		}
+		resp, err := http.Post(u.String(), "application/json", bytes.NewBuffer(j))
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+			return fmt.Errorf(string(body))
+		}
+		return nil
+	}
 	ipt := h.iptPool.Get()
 	defer h.iptPool.Put(ipt)
 	ipt.Bind("Id", id)
