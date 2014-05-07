@@ -29,3 +29,16 @@ func (p Params) AddJSON(data []byte) (err error) {
 	}
 	return
 }
+
+func (p Params) Values() url.Values {
+	values := make(url.Values)
+	for k, v := range p {
+		switch v := v.(type) {
+		case []string:
+			values[k] = v
+		case string:
+			values.Add(k, v)
+		}
+	}
+	return values
+}

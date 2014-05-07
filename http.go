@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 
 	"github.com/mikespook/golib/idgen"
 	"github.com/mikespook/golib/iptpool"
@@ -21,7 +22,7 @@ import (
 )
 
 var (
-	ErrAccessDeny       = errors.New("Access Deny")
+	ErrForbidden        = errors.New("Access Deny")
 	ErrMethodNotAllowed = errors.New("Method Not Allowed")
 	ErrSyncNeeded       = errors.New("`sync` param needed")
 )
@@ -52,18 +53,6 @@ func New(scriptPath, secret string) (h *ghokoHandler) {
 	return h
 }
 
-func (h *ghokoHandler) Close() error {
-	errstr := ""
-	emap := h.iptPool.Free()
-	for k, err := range emap {
-		errstr = fmt.Sprintf("%s[%s]: %s\n", errstr, k, err)
-	}
-	if errstr != "" {
-		return errors.New(errstr)
-	}
-	return nil
-}
-
 func (h *ghokoHandler) verify(p url.Values) bool {
 	if h.secret == "" {
 		return true
@@ -78,19 +67,19 @@ func (h *ghokoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 	default:
 		log.Errorf("[%s] %s \"%s: %s\"", r.RemoteAddr, r.RequestURI, ErrMethodNotAllowed, r.Method)
-		http.Error(w, ErrMethodNotAllowed.Error(), 405)
+		h.write(w, r, http.StatusMethodNotAllowed, ErrMethodNotAllowed.Error())
 		return
 	}
 	u, err := url.Parse(r.RequestURI)
 	if err != nil {
 		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
-		http.Error(w, err.Error(), 500)
+		h.write(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	p := u.Query()
 	if !h.verify(p) { // verify secret token
-		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrAccessDeny)
-		http.Error(w, ErrAccessDeny.Error(), 403)
+		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, ErrForbidden)
+		h.write(w, r, http.StatusForbidden, ErrForbidden.Error())
 		return
 	}
 	p.Del("secret")
@@ -100,13 +89,13 @@ func (h *ghokoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		data, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
-			http.Error(w, err.Error(), 500)
+			h.write(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 		defer r.Body.Close()
 		if err := params.AddJSON(data); err != nil {
 			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
-			http.Error(w, err.Error(), 500)
+			h.write(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
@@ -153,10 +142,7 @@ func (h *ghokoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Ghoko-Id", id)
 	} else {
 		go f(false)
-		if _, err := w.Write([]byte(fmt.Sprintf("\"%s\"", id))); err != nil {
-			log.Errorf("[%s] %s %s \"%s\"", r.RemoteAddr,
-				r.RequestURI, id, err)
-		}
+		h.write(w, r, http.StatusOK, id)
 	}
 }
 
@@ -167,16 +153,7 @@ func (h *ghokoHandler) post(uri string, params Params) ([]byte, error) {
 	}
 	q := u.Query()
 	q.Add("secret", h.secret)
-	values := make(url.Values)
-	for k, v := range params {
-		switch v := v.(type) {
-		case []string:
-			values[k] = v
-		case string:
-			values.Add(k, v)
-		}
-	}
-	resp, err := http.PostForm(u.String(), values)
+	resp, err := http.PostForm(u.String(), params.Values())
 	if err != nil {
 		return nil, err
 	}
@@ -245,4 +222,28 @@ func (h *ghokoHandler) call(id, name string, params Params) error {
 	defer h.iptPool.Put(ipt)
 	ipt.Bind("Id", id)
 	return ipt.Exec(name, params)
+}
+
+func (h *ghokoHandler) write(w http.ResponseWriter, r *http.Request, status int, data interface{}) {
+	accept := r.Header.Get("Accept")
+	if strings.Contains(accept, "application/json") {
+		if err := h.writeJson(w, status, data); err != nil {
+			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
+		}
+		return
+	}
+	w.WriteHeader(status)
+	if _, err := w.Write([]byte(fmt.Sprintf("%s", data))); err != nil {
+		log.Errorf("[%s] %s \"%s\"", r.RemoteAddr, r.RequestURI, err)
+	}
+}
+
+func (h *ghokoHandler) writeJson(w http.ResponseWriter, status int, data interface{}) error {
+	content, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(status)
+	_, err = w.Write(content)
+	return err
 }

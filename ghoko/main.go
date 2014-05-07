@@ -36,7 +36,7 @@ func init() {
 		flag.StringVar(&pidfile, "pid", "", "PID file")
 		flag.Parse()
 	}
-	log.Flag()
+	log.InitWithFlag()
 }
 
 func main() {
@@ -61,7 +61,6 @@ func main() {
 	// Begin
 	p := path.Clean(scriptPath)
 	ghk := ghoko.New(p, secret)
-	defer ghk.Close()
 	go func() {
 		defer func() {
 			if err := signal.Send(os.Getpid(), os.Interrupt); err != nil {
