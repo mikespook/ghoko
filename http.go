@@ -8,13 +8,10 @@ package ghoko
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path"
-	"strings"
 
 	"github.com/mikespook/golib/idgen"
 	"github.com/mikespook/golib/iptpool"
@@ -47,21 +44,33 @@ func New(scriptPath, secret string) (h *Handler) {
 	return h
 }
 
+func writeAndLog(w http.ResponseWriter, r *http.Request, status int, data []byte) {
+	log.Messagef("%s %s \"%s\" %d", r.RemoteAddr, r.Method, r.URL.String(), status)
+	w.WriteHeader(status)
+	if data != nil {
+		if _, err := w.Write(data); err != nil {
+			log.Errorf("%s %s \"%s\" %d \"%s\"", r.RemoteAddr, r.Method, r.URL.String(), status, err)
+		}
+	}
+}
+
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	hoko, err := newHoko(h, w, r)
+	u, err := url.ParseRequestURI(r.RequestURI)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		writeAndLog(w, r, http.StatusInternalServerError, []byte(err.Error()))
 		return
 	}
-	if hoko.forbidden(h.secret) {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(err.Error()))
+	if u.Query().Get("_secret") != h.secret {
+		writeAndLog(w, r, http.StatusForbidden, nil)
+		return
+	}
+	hoko, err := newHook(h, w, r)
+	if err != nil {
+		writeAndLog(w, r, http.StatusInternalServerError, []byte(err.Error()))
 		return
 	}
 	status, data := hoko.exec()
-	w.WriteHeader(status)
-	w.Write(data)
+	writeAndLog(w, r, status, data)
 }
 
 func (h *Handler) post(uri string, params Params) ([]byte, error) {

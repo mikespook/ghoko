@@ -1,117 +1,107 @@
 package ghoko
 
 import (
+	"bytes"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
-
-	"github.com/mikespook/golib/idgen"
 )
 
-type hoko struct {
-	id     string
-	isJson bool
-	sync   bool
-	w      http.ResponseWriter
-	params Params
-	name   string
-	secret string
+type hook struct {
+	id      string
+	isJson  bool
+	isSync  bool
+	w       http.ResponseWriter
+	params  Params
+	name    string
+	handler *Handler
 }
 
-func newHoko(id string, w http.ResponseWriter, r *http.Request) (*hoko, error) {
-	if err := r.ParseForm(); err != nil {
-		return nil, err
-	}
+func newHook(handler *Handler, w http.ResponseWriter, r *http.Request) (*hook, error) {
 	id := r.Header.Get("Ghoko-Id")
 	if id == "" {
-		id = h.idgen.Id().(string)
+		id = handler.idgen.Id().(string)
 	}
-	h := &hoko{
-		w:      w,
-		params: make(Params),
-		isJson: strings.Contains(r.Header.Get("Content-Type"), "json"),
-		sync:   r.Header.Get("Sync") == "true",
-		name:   path.Base(r.URL.Path),
+	h := &hook{
+		w:       w,
+		params:  make(Params),
+		isJson:  strings.Contains(r.Header.Get("Content-Type"), "json"),
+		isSync:  r.Header.Get("Ghoko-Sync") == "true",
+		name:    path.Base(r.URL.Path),
+		handler: handler,
+		id:      id,
 	}
-	h.params.AddValues(r.Form)
 	if h.isJson {
+		u, err := url.ParseRequestURI(r.RequestURI)
+		if err != nil {
+			return nil, err
+		}
+		h.params.AddValues(u.Query())
 		data, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			return nil, err
 		}
 		defer r.Body.Close()
-		if err := params.AddJSON(data); err != nil {
-			h.write(w, r, http.StatusInternalServerError, err.Error())
+		if err := h.params.AddJSON(data); err != nil {
 			return nil, err
 		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			return nil, err
+		}
+		h.params.AddValues(r.Form)
 	}
 	return h, nil
 }
 
-func (h *hoko) forbidden(secret string) bool {
-	return secret != "" && secret != h.secret
-}
-
-func (h *hoko) exec() (int, []byte) {
-	f := func(sync bool) {
-		ipt := h.iptPool.Get()
-		defer h.iptPool.Put(ipt)
+func (h *hook) exec() (int, []byte) {
+	f := func() (int, []byte, error) {
+		ipt := h.handler.iptPool.Get()
+		defer h.handler.iptPool.Put(ipt)
+		var buf bytes.Buffer
+		var status int
 		ipt.Bind("Id", h.id)
-		ipt.Bind("WriteBody", func(str string) (err error) {
-			if !sync {
+		ipt.Bind("WriteBody", func(str string) error {
+			if !h.isSync {
 				return ErrSyncNeeded
 			}
-			_, err = w.Write([]byte(str))
-			return
+			_, err := buf.WriteString(str)
+			return err
 		})
-		ipt.Bind("WriteHeader", func(status int) error {
-			if !sync {
+		ipt.Bind("WriteHeader", func(s int) error {
+			if !h.isSync {
 				return ErrSyncNeeded
 			}
-			w.WriteHeader(status)
+			status = s
 			return nil
 		})
 
-		if err := ipt.Exec(name, params); err != nil {
-			log.Errorf("[%s] %s \"%s\"", r.RemoteAddr,
-				r.RequestURI, err.Error())
-			if sync {
-				h.write(w, r, http.StatusInternalServerError, err.Error())
-			}
-			return
+		if err := ipt.Exec(h.name, h.params); err != nil {
+			return http.StatusInternalServerError, nil, err
 		}
-		log.Messagef("[%s] %s \"Success\"", r.RemoteAddr,
-			r.RequestURI)
+		return http.StatusOK, buf.Bytes(), nil
 	}
 
-	if p.Get("sync") == "true" {
-		f(true)
-		w.Header().Set("Ghoko-Id", id)
-	} else {
-		go f(false)
-		h.write(w, r, http.StatusOK, id)
+	if h.isSync {
+		h.w.Header().Set("Ghoko-Id", h.id)
+		status, data, err := f()
+		if err != nil {
+			return http.StatusInternalServerError, []byte(err.Error())
+		}
+		return status, data
 	}
+	go f()
+	return http.StatusOK, h.data(h.id)
 }
 
-func (h *hoko) write() error {
+func (h *hook) data(data string) []byte {
 	if h.isJson {
-		return h.writeJson()
+		buf := bytes.NewBufferString("\"")
+		buf.WriteString(data)
+		buf.WriteString("\"")
+		return buf.Bytes()
 	}
-	return h.writeText()
-}
-
-func (h *hoko) writeJson() error {
-	content, err := json.Marshal(h.data)
-	if err != nil {
-		return err
-	}
-	w.WriteHeader(h.status)
-	_, err = w.Write(content)
-	return err
-}
-
-func (h *hoko) writeText() error {
-	w.WriteHeader(h.status)
-	_, err = w.Write(h.content)
-	return err
+	return []byte(data)
 }
