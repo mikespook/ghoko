@@ -30,7 +30,8 @@ Then:
 
 	go get github.com/mikespook/ghoko/ghoko
 
-The ghoko library implement http.Handler and can be embeded into other projects.
+The ghoko library implement http.Handler and can be embeded
+into other projects.
 
 	go get github.com/mikespook/ghoko
 
@@ -52,7 +53,8 @@ Some help information:
 		-addr=":8080": Address of http service
 		-defualt="gitlab": Default code hosting site
 		-log="": log to write (empty for STDOUT)
-		-log-level="all": log level ('error', 'warning', 'message', 'debug', 'all' and 'none' are combined with '|')
+		-log-level="all": log level ('error', 'warning', 'message', 'debug', 
+			'all' and 'none' are combined with '|')
 		-pid="": PID file
 		-script="./": Path of lua files
 		-secret="": Secret token
@@ -62,19 +64,26 @@ Some help information:
 
 The pattern of hook URL is 
 
-	${schema}://${addr}/no-mater-what-here-is/${hook}?secret=${secret}&sync={true|false}&${params}
+	${schema}://${addr}/no-mater-what-here-is/${hook}?_secret=${secret}&${params}
 
 `$schema` could be HTTP or HTTPS either. When both two `tls-*` flags were
 specified correctly, The HTTPS will be used.
 
 `$params` can be used for passing custom values into script through URL. 
-HTTP method, POST is also accepted. Passing enconded JSON data through POST-Body.
-Both of them will combine into the global variable `ghoko.Params` in Lua scripts.
+HTTP method, POST is also accepted. If `Content-Type` in the request header
+contains `json`, it means passing enconded JSON data through POST-Body.
+Otherwise, it is a common post with form data.
 
-Usually, GHoKo calls lua scripts asynchronous. `$sync` is a special param for
-calling ghoko in synchronized way. When sync is equal `ture`(string), 
-`ghoko.Write` and `ghoko.WriteHeader` can be used for writing something to 
-HTTP clients.
+All of them will combine into a global variable `ghoko.Params`, it can
+be used in Lua scripts.
+
+Usually, GHoKo calls lua scripts asynchronous. `Ghoko-Sync` is a magic 
+header for calling ghoko in synchronized way. When it is equal 
+`ture`(string), two functions `ghoko.WriteBody` and `ghoko.WriteHeader`
+can be used for response data and HTTP status to HTTP clients.
+
+Another magic header is `GHoKo-Id`. It tells ghoko do not generate ID
+but using client specified one.
 
 Scripting
 ---------
@@ -95,6 +104,9 @@ Following variables and functions can be called in Lua:
  * ghoko.Error(err)/ghoko.Errorf(format, msg) - Output error infomations
  * ghoko.Write(msg) - Write something to HTTP clients (sync only)
  * ghoko.WriteHeader(status) - Assign HTTP status (sync only)
+ * ghoko.Get(url) - GET a remote url, `_secret` will be passed
+ * ghoko.PostJSON(url, params) - POST to a remote url with JSON encoded params
+ * ghoko.Post(url, params) - POST to a remote url with a form
 
 Web Hook
 --------
@@ -106,11 +118,11 @@ Following: Your repo --> Settings --> Service Hooks --> WebHook URLs.
 
 Here is an example for gitlab ([gitlab.lua][gitlab-lua]):
 
-	http://192.168.1.100/gitlab?secret=phrase
+	http://192.168.1.100/gitlab?_secret=phrase
 
 or for github ([github.lua][github-lua]):
 
-	http://192.168.1.100/github?secret=phrase
+	http://192.168.1.100/github?_secret=phrase
 
 We have writen demo scripts for you. The scripts will print the repo and commits's informations.
 
