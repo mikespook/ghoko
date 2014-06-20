@@ -7,14 +7,15 @@ package main
 
 import (
 	"flag"
-	"github.com/mikespook/ghoko"
-	"github.com/mikespook/golib/log"
-	"github.com/mikespook/golib/pid"
-	"github.com/mikespook/golib/signal"
 	"net/http"
 	"os"
 	"path"
 	"time"
+
+	"github.com/mikespook/ghoko"
+	"github.com/mikespook/golib/log"
+	"github.com/mikespook/golib/pid"
+	"github.com/mikespook/golib/signal"
 )
 
 var (
@@ -23,7 +24,8 @@ var (
 	secret     string
 	tlsCert    string
 	tlsKey     string
-	pidfile    string
+	pidFile    string
+	rootUrl    string
 )
 
 func init() {
@@ -33,16 +35,17 @@ func init() {
 		flag.StringVar(&secret, "secret", "", "Secret token")
 		flag.StringVar(&tlsCert, "tls-cert", "", "TLS cert file")
 		flag.StringVar(&tlsKey, "tls-key", "", "TLS key file")
-		flag.StringVar(&pidfile, "pid", "", "PID file")
+		flag.StringVar(&pidFile, "pid", "", "PID file")
+		flag.StringVar(&rootUrl, "root", "/", "Root path of URL")
 		flag.Parse()
 	}
 	log.InitWithFlag()
 }
 
 func main() {
-	log.Messagef("Starting: addr=%q script=%q", addr, scriptPath)
-	if pidfile != "" {
-		if p, err := pid.New(pidfile); err != nil {
+	log.Messagef("Starting: webhook=%q script=%q", ghoko.CallbackUrl(tlsCert, tlsKey, addr, rootUrl), scriptPath)
+	if pidFile != "" {
+		if p, err := pid.New(pidFile); err != nil {
 			log.Error(err)
 		} else {
 			defer func() {
@@ -50,7 +53,7 @@ func main() {
 					log.Error(err)
 				}
 			}()
-			log.Messagef("PID: %d file=%q", p.Pid, pidfile)
+			log.Messagef("PID: %d file=%q", p.Pid, pidFile)
 		}
 	}
 	defer func() {
@@ -60,7 +63,7 @@ func main() {
 
 	// Begin
 	p := path.Clean(scriptPath)
-	ghk := ghoko.New(p, secret)
+	ghk := ghoko.New(p, secret, rootUrl)
 	go func() {
 		defer func() {
 			if err := signal.Send(os.Getpid(), os.Interrupt); err != nil {
