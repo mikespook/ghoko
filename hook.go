@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 )
 
@@ -14,6 +13,7 @@ type hook struct {
 	isJson  bool
 	isSync  bool
 	w       http.ResponseWriter
+	r       *http.Request
 	params  Params
 	name    string
 	handler *Handler
@@ -24,12 +24,17 @@ func newHook(handler *Handler, w http.ResponseWriter, r *http.Request) (*hook, e
 	if id == "" {
 		id = handler.idgen.Id().(string)
 	}
+	if !strings.HasPrefix(r.URL.Path, handler.rootUrl) {
+		return nil, ErrNotFound
+	}
+	name := strings.TrimPrefix(r.URL.Path, handler.rootUrl)
 	h := &hook{
 		w:       w,
+		r:       r,
 		params:  make(Params),
 		isJson:  strings.Contains(r.Header.Get("Content-Type"), "json"),
 		isSync:  r.Header.Get("Ghoko-Sync") == "true",
-		name:    path.Base(r.URL.Path),
+		name:    name,
 		handler: handler,
 		id:      id,
 	}
@@ -79,6 +84,9 @@ func (h *hook) exec() (int, []byte) {
 		})
 
 		if err := ipt.Exec(h.name, h.params); err != nil {
+			if !h.isSync {
+				writeAndLogError(nil, h.r, err)
+			}
 			return http.StatusInternalServerError, nil, err
 		}
 		return http.StatusOK, buf.Bytes(), nil
