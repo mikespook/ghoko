@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"time"
 
 	"github.com/mikespook/ghoko"
 	"github.com/mikespook/golib/log"
@@ -58,7 +57,6 @@ func main() {
 	}
 	defer func() {
 		log.Message("Exited!")
-		time.Sleep(time.Millisecond * 100)
 	}()
 
 	// Begin
