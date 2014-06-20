@@ -56,6 +56,7 @@ Some help information:
 		-log-level="all": log level ('error', 'warning', 'message', 'debug', 
 			'all' and 'none' are combined with '|')
 		-pid="": PID file
+		-root="/": Root path of URL
 		-script="./": Path of lua files
 		-secret="": Secret token
 		-tls-cert="": TLS cert file
@@ -64,10 +65,17 @@ Some help information:
 
 The pattern of hook URL is 
 
-	${schema}://${addr}/no-mater-what-here-is/${hook}?_secret=${secret}&${params}
+	${schema}://${addr}/${root}/${hook}?_secret=${secret}&${params}
 
 `$schema` could be HTTP or HTTPS either. When both two `tls-*` flags were
 specified correctly, The HTTPS will be used.
+
+You can set root path of URL through `root` flag.
+
+Eg. `script` was set to `/ghoko`. And if `root` is `/hook/v1`, the request
+`http://127.0.0.1:3080/hook/v1/foo/bar` will evaluate `/ghoko/foo/bar.lua`.
+If `root` was set to `/hook` and requesting the same URL, 
+`/ghoko/v1/foo/bar.lua` will be evaluated.
 
 `$params` can be used for passing custom values into script through URL. 
 HTTP method, POST is also accepted. If `Content-Type` in the request header
@@ -77,8 +85,8 @@ Otherwise, it is a common post with form data.
 All of them will combine into a global variable `ghoko.Params`, it can
 be used in Lua scripts.
 
-Usually, GHoKo calls lua scripts asynchronous. `Ghoko-Sync` is a magic 
-header for calling ghoko in synchronized way. When it is equal 
+Usually, GHoKo evaluates lua scripts asynchronous. `Ghoko-Sync` is a magic 
+header for requesting ghoko in synchronized way. When it is equal 
 `ture`(string), two functions `ghoko.WriteBody` and `ghoko.WriteHeader`
 can be used for response data and HTTP status to HTTP clients.
 
@@ -97,7 +105,7 @@ Following variables and functions can be called in Lua:
 
  * ghoko.Id - Every request has a global unique Id
  * ghoko.Params - Params passed by URL\POST-BODY(JSON format)
- * ghoko.Call(id, name, params) - Calling a lua script and passing params to it
+ * ghoko.Call(id, name, params) - Call lua script and pass params to it
  * ghoko.Debug(msg)/ghoko.Debugf(format, msg) - Output debug infomations
  * ghoko.Message(msg)/ghoko.Messagef(format, msg) - Output message infomations
  * ghoko.Warning(msg)/ghoko.Warningf(format, msg) - Output warning infomations
