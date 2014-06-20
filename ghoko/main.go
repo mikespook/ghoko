@@ -31,7 +31,7 @@ var (
 func init() {
 	if !flag.Parsed() {
 		flag.StringVar(&addr, "addr", ":3080", "Address of HTTP service")
-		flag.StringVar(&scriptPath, "script", "./", "Path of lua files")
+		flag.StringVar(&scriptPath, "script", path.Dir(os.Args[0]), "Path of lua files")
 		flag.StringVar(&secret, "secret", "", "Secret token")
 		flag.StringVar(&tlsCert, "tls-cert", "", "TLS cert file")
 		flag.StringVar(&tlsKey, "tls-key", "", "TLS key file")
