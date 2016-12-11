@@ -35,7 +35,7 @@ set -e
 
 . /lib/lsb/init-functions
 
-start_z_node() {
+start_daemon() {
 	if [ -f $pid ]; then
 		echo -n "Already started " && return 1
 	fi
@@ -44,7 +44,7 @@ start_z_node() {
 		-tls-cert="$tls_cert" -tls-key="$tls_key" &>>$log &
 }
 
-stop_z_node() {
+stop_daemon() {
 	[ ! -f $pid ] && echo -n "Not running " && return 1
 	p=`cat $pid`
 	[ -n "$p" ] && kill -INT $p &> /dev/null
@@ -52,6 +52,12 @@ stop_z_node() {
 		rm $pid
 		return 1
 	fi
+}
+
+_kill() {
+	killall -INT $DAEMON
+	killall -KILL $DAEMON
+	rm -f $pid
 }
 
 waitstart() {
@@ -79,7 +85,7 @@ waitstop() {
 }
 
 _start() { 
-	if start_z_node; then
+	if start_daemon; then
 		if waitstart; then
 			echo "... OK."
 		else
@@ -91,7 +97,7 @@ _start() {
 }
 
 _stop() {
-	if stop_z_node; then
+	if stop_daemon; then
 		if waitstop; then
 			echo "... OK."
 		else
@@ -118,8 +124,12 @@ case "$1" in
 		echo -n "Starting: "	
 		_start
 		;;
+	killstop)
+		echo -n "Killing $NAME"
+		_kill
+		;;
 	*)
-		echo "Usage: $NAME {start|stop|restart}" >&2
+		echo "Usage: $NAME {start|stop|killstop|restart}" >&2
 		exit 1
 		;;
 esac
