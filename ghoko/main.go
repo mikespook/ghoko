@@ -25,6 +25,10 @@ var (
 	tlsKey     string
 	pidFile    string
 	rootUrl    string
+	version    string
+	platform   string
+	built      string
+	ver        bool
 )
 
 func init() {
@@ -35,10 +39,16 @@ func init() {
 	flag.StringVar(&tlsKey, "tls-key", "", "TLS key file")
 	flag.StringVar(&pidFile, "pid", "", "PID file")
 	flag.StringVar(&rootUrl, "root", "/", "Root path of URL")
+	flag.BoolVar(&ver, "version", false, "Display version of ghoko")
 	flag.Parse()
 }
 
 func main() {
+	if ver {
+		log.Printf("Version: %s (%s) [%s]", version, platform, built)
+		return
+	}
+
 	log.Printf("Starting: webhook=%q script=%q\n", ghoko.CallbackUrl(tlsCert, tlsKey, addr, rootUrl), scriptPath)
 	if pidFile != "" {
 		if p, err := pid.New(pidFile); err != nil {
