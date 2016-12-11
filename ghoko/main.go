@@ -7,12 +7,12 @@ package main
 
 import (
 	"flag"
+	"log"
 	"net/http"
 	"os"
 	"path"
 
 	"github.com/mikespook/ghoko"
-	"github.com/mikespook/golib/log"
 	"github.com/mikespook/golib/pid"
 	"github.com/mikespook/golib/signal"
 )
@@ -28,35 +28,32 @@ var (
 )
 
 func init() {
-	if !flag.Parsed() {
-		flag.StringVar(&addr, "addr", ":3080", "Address of HTTP service")
-		flag.StringVar(&scriptPath, "script", path.Dir(os.Args[0]), "Path of lua files")
-		flag.StringVar(&secret, "secret", "", "Secret token")
-		flag.StringVar(&tlsCert, "tls-cert", "", "TLS cert file")
-		flag.StringVar(&tlsKey, "tls-key", "", "TLS key file")
-		flag.StringVar(&pidFile, "pid", "", "PID file")
-		flag.StringVar(&rootUrl, "root", "/", "Root path of URL")
-		flag.Parse()
-	}
-	log.InitWithFlag()
+	flag.StringVar(&addr, "addr", ":3080", "Address of HTTP service")
+	flag.StringVar(&scriptPath, "script", path.Dir(os.Args[0]), "Path of lua files")
+	flag.StringVar(&secret, "secret", "", "Secret token")
+	flag.StringVar(&tlsCert, "tls-cert", "", "TLS cert file")
+	flag.StringVar(&tlsKey, "tls-key", "", "TLS key file")
+	flag.StringVar(&pidFile, "pid", "", "PID file")
+	flag.StringVar(&rootUrl, "root", "/", "Root path of URL")
+	flag.Parse()
 }
 
 func main() {
-	log.Messagef("Starting: webhook=%q script=%q", ghoko.CallbackUrl(tlsCert, tlsKey, addr, rootUrl), scriptPath)
+	log.Printf("Starting: webhook=%q script=%q\n", ghoko.CallbackUrl(tlsCert, tlsKey, addr, rootUrl), scriptPath)
 	if pidFile != "" {
 		if p, err := pid.New(pidFile); err != nil {
-			log.Error(err)
+			log.Fatalln(err)
 		} else {
 			defer func() {
 				if err := p.Close(); err != nil {
-					log.Error(err)
+					log.Fatalln(err)
 				}
 			}()
-			log.Messagef("PID: %d file=%q", p.Pid, pidFile)
+			log.Printf("PID: %d file=%q\n", p.Pid, pidFile)
 		}
 	}
 	defer func() {
-		log.Message("Exited!")
+		log.Println("Exited!")
 	}()
 
 	// Begin
@@ -75,12 +72,12 @@ func main() {
 			err = http.ListenAndServeTLS(addr, tlsCert, tlsKey, ghk)
 		}
 		if err != nil {
-			log.Error(err)
+			log.Fatalln(err)
 		}
 	}()
 	// End
-
-	sh := signal.NewHandler()
-	sh.Bind(os.Interrupt, func() bool { return true })
-	sh.Loop()
+	signal.Bind(os.Interrupt, func() uint {
+		return signal.BreakExit
+	})
+	signal.Wait()
 }

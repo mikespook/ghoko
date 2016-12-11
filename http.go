@@ -10,13 +10,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
 
 	"github.com/mikespook/golib/idgen"
 	"github.com/mikespook/golib/iptpool"
-	"github.com/mikespook/golib/log"
 )
 
 type Handler struct {
@@ -56,12 +56,12 @@ func writeAndLogError(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func writeAndLog(w http.ResponseWriter, r *http.Request, status int, data []byte) {
-	log.Messagef("%s %s %q %d %q", r.RemoteAddr, r.Method, r.URL.String(), status, data)
+	log.Printf("%s %s %q %d %q", r.RemoteAddr, r.Method, r.URL.String(), status, data)
 	if w != nil {
 		w.WriteHeader(status)
 		if data != nil {
 			if _, err := w.Write(data); err != nil {
-				log.Errorf("%s %s %q %d %q", r.RemoteAddr, r.Method, r.URL.String(), status, err)
+				log.Printf("%s %s %q %d %q", r.RemoteAddr, r.Method, r.URL.String(), status, err)
 			}
 		}
 	}
