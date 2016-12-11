@@ -11,7 +11,7 @@
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 NAME=ghoko
 DESC=ghoko
-DAEMON=/usr/bin/ghoko
+DAEMON=/usr/local/bin/ghoko
 
 
 if [ -f /etc/$NAME.conf ]; then  
